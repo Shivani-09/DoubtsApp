@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f4f4f4; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); width: 300px; text-align: center; }
+        h2 { color: #333; margin-bottom: 20px; }
+        label { display: block; text-align: left; margin-bottom: 5px; font-weight: bold; }
+        input { width: calc(100% - 22px); padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        .message { margin-top: 15px; font-size: 14px; }
+        .error-message { color: red; }
+        .success-message { color: green; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Login</h2>
+        <div id="statusMessage" class="message"></div>
+        <form id="loginForm">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            <button type="submit">Login</button>
+        </form>
+        <p>Don't have an account? <a href="/register-page">Register here</a></p>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const statusMessageDiv = document.getElementById('statusMessage');
+
+            statusMessageDiv.textContent = ''; // Clear previous messages
+            statusMessageDiv.className = 'message'; // Reset class
+
+            try {
+                const response = await fetch('http://localhost:8081/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    statusMessageDiv.textContent = 'Login successful! Redirecting...';
+                    statusMessageDiv.classList.add('success-message');
+                    // In a real app, you'd store a token here
+                    setTimeout(() => {
+                        window.location.href = '/dashboard'; // Redirect to dashboard on success
+                    }, 1500); // Wait a bit to show message
+                } else {
+                    const errorText = await response.text(); // Get raw text for error message
+                    statusMessageDiv.textContent = 'Login failed: ' + errorText;
+                    statusMessageDiv.classList.add('error-message');
+                }
+            } catch (error) {
+                statusMessageDiv.textContent = 'An error occurred: ' + error.message;
+                statusMessageDiv.classList.add('error-message');
+            }
+        });
+    </script>
+</body>
+</html>
