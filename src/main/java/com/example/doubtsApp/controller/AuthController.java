@@ -9,10 +9,10 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // Keep this for password hashing
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List; // Import List
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -34,12 +34,11 @@ public class AuthController {
             return new ResponseEntity<>("Error: Email is already in use!", HttpStatus.BAD_REQUEST);
         }
 
-        // Create new user's account
         User user = new User(registerRequest.getUsername(),
                 registerRequest.getEmail(),
-                passwordEncoder.encode(registerRequest.getPassword())); // Hash the password
+                passwordEncoder.encode(registerRequest.getPassword()));
 
-        userRepository.save(user);
+        userRepository.customSave(user); // Still using customSave
 
         return new ResponseEntity<>("User registered successfully!", HttpStatus.OK);
     }
@@ -54,7 +53,6 @@ public class AuthController {
 
         User user = userOptional.get();
 
-        // Check password using BCrypt
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             return new ResponseEntity<>("Error: Invalid password!", HttpStatus.UNAUTHORIZED);
         }
@@ -62,17 +60,11 @@ public class AuthController {
         return new ResponseEntity<>("User logged in successfully!", HttpStatus.OK);
     }
 
-    // --- NEW ENDPOINTS FOR DISPLAY, UPDATE, DELETE ---
-
     @GetMapping("/users")
     public ResponseEntity<List<User>> getAllUsers() {
         List<User> users = userRepository.findAll();
-        // It's generally good practice not to send hashed passwords to the frontend,
-        // but for this simplified example, we'll send the User object as-is.
-        // In a real application, you'd create a UserResponseDTO to exclude sensitive fields.
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
-
 
     @PutMapping("/users/{id}")
     public ResponseEntity<String> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateRequest userDetails) {
@@ -84,34 +76,35 @@ public class AuthController {
 
         User existingUser = userOptional.get();
 
-        // Check if username is taken by another user
         if (!existingUser.getUsername().equals(userDetails.getUsername()) && userRepository.existsByUsername(userDetails.getUsername())) {
             return new ResponseEntity<>("Error: Username is already taken by another user!", HttpStatus.BAD_REQUEST);
         }
 
-        // Check if email is taken by another user
         if (!existingUser.getEmail().equals(userDetails.getEmail()) && userRepository.existsByEmail(userDetails.getEmail())) {
             return new ResponseEntity<>("Error: Email is already in use by another user!", HttpStatus.BAD_REQUEST);
         }
 
-        // Update only if values are different to avoid unnecessary database writes
+        boolean changed = false;
         if (!existingUser.getUsername().equals(userDetails.getUsername())) {
              existingUser.setUsername(userDetails.getUsername());
+             changed = true;
         }
         if (!existingUser.getEmail().equals(userDetails.getEmail())) {
             existingUser.setEmail(userDetails.getEmail());
+            changed = true;
         }
 
-        // Only update password if a new one is provided (and not blank)
-        // This logic is already good and will now work correctly with optional password
         if (userDetails.getPassword() != null && !userDetails.getPassword().isBlank()) {
             existingUser.setPassword(passwordEncoder.encode(userDetails.getPassword()));
+            changed = true;
         }
 
-        userRepository.save(existingUser);
+        if (changed) {
+            userRepository.customSave(existingUser); // Still using customSave
+        }
+
         return new ResponseEntity<>("User updated successfully!", HttpStatus.OK);
     }
-
 
     @DeleteMapping("/users/{id}")
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
