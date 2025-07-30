@@ -1,14 +1,170 @@
 <!DOCTYPE html>
-<html>
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <title>Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #e6ffe6; flex-direction: column; margin: 0;}
-        h1 { color: #28a745; margin-bottom: 20px;}
-        p { font-size: 1.2em; color: #555; }
-        a { color: #007bff; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); text-align: center; }
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Use min-height to allow content to grow */
+            background-color: #e6ffe6;
+            flex-direction: column;
+            margin: 0;
+            padding: 20px; /* Add some padding */
+            box-sizing: border-box; /* Include padding in element's total width and height */
+        }
+
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%; /* Make container wider for table */
+            max-width: 800px; /* Limit max-width */
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #28a745;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+
+        .action-buttons button {
+            margin-right: 5px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .edit-button {
+            background-color: #ffc107;
+            color: #333;
+        }
+
+        .edit-button:hover {
+            background-color: #e0a800;
+        }
+
+        .delete-button {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .delete-button:hover {
+            background-color: #c82333;
+        }
+
+        .message {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .error-message {
+            color: red;
+        }
+
+        .success-message {
+            color: green;
+        }
+
+        /* Modal for editing */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more responsive */
+            max-width: 500px;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .modal-content input {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .modal-content button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: auto; /* Override general button width */
+            margin-top: 10px;
+        }
+
+        .modal-content button:hover {
+            background-color: #0056b3;
+        }
+
     </style>
 </head>
 <body>
@@ -16,6 +172,209 @@
         <h1>Welcome to your Dashboard!</h1>
         <p>You have successfully logged in.</p>
         <p><a href="/login-page">Go back to Login</a></p>
+
+        <h2>Registered Users</h2>
+        <div id="usersStatusMessage" class="message"></div>
+        <table id="usersTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                </tbody>
+        </table>
     </div>
+
+    <div id="editUserModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Edit User</h2>
+            <div id="modalStatusMessage" class="message"></div>
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId">
+                <label for="editUsername">Username:</label>
+                <input type="text" id="editUsername" required>
+                <label for="editEmail">Email:</label>
+                <input type="email" id="editEmail" required>
+                <label for="editPassword">New Password (leave blank to keep current):</label>
+                <input type="password" id="editPassword">
+                <button type="submit">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8081/api/auth';
+        const usersTableBody = document.querySelector('#usersTable tbody');
+        const usersStatusMessageDiv = document.getElementById('usersStatusMessage');
+        const editUserModal = document.getElementById('editUserModal');
+        const closeModalButton = document.querySelector('.close-button');
+        const editUserForm = document.getElementById('editUserForm');
+        const modalStatusMessageDiv = document.getElementById('modalStatusMessage');
+
+        // Function to fetch and display users
+        async function fetchAndDisplayUsers() {
+            usersTableBody.innerHTML = ''; // Clear existing rows
+            usersStatusMessageDiv.textContent = 'Loading users...';
+            usersStatusMessageDiv.className = 'message';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users`);
+                if (response.ok) {
+                    const users = await response.json();
+                    if (users.length === 0) {
+                        usersStatusMessageDiv.textContent = 'No users registered yet.';
+                        usersStatusMessageDiv.classList.add('info-message'); // Add a class for info
+                        return;
+                    }
+                    usersStatusMessageDiv.textContent = ''; // Clear loading message
+                    users.forEach(user => {
+                        const row = usersTableBody.insertRow();
+                        row.setAttribute('data-user-id', user.id); // Store ID on the row
+
+                        const idCell = row.insertCell();
+                        const usernameCell = row.insertCell();
+                        const emailCell = row.insertCell();
+                        const actionsCell = row.insertCell();
+
+                        idCell.textContent = user.id;
+                        usernameCell.textContent = user.username;
+                        emailCell.textContent = user.email;
+
+                        // Action Buttons
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Edit';
+                        editButton.classList.add('edit-button');
+                        editButton.onclick = () => openEditModal(user);
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.classList.add('delete-button');
+                        deleteButton.onclick = () => deleteUser(user.id, user.username);
+
+                        actionsCell.classList.add('action-buttons');
+                        actionsCell.appendChild(editButton);
+                        actionsCell.appendChild(deleteButton);
+                    });
+                } else {
+                    const errorText = await response.text();
+                    usersStatusMessageDiv.textContent = 'Failed to load users: ' + errorText;
+                    usersStatusMessageDiv.classList.add('error-message');
+                }
+            } catch (error) {
+                usersStatusMessageDiv.textContent = 'An error occurred while fetching users: ' + error.message;
+                usersStatusMessageDiv.classList.add('error-message');
+            }
+        }
+
+        // Function to open the edit modal and pre-fill data
+        function openEditModal(user) {
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editEmail').value = user.email;
+            document.getElementById('editPassword').value = ''; // Clear password field for security
+
+            modalStatusMessageDiv.textContent = ''; // Clear previous messages
+            modalStatusMessageDiv.className = 'message';
+
+            editUserModal.style.display = 'block'; // Show the modal
+        }
+
+        // Function to close the edit modal
+        function closeEditModal() {
+            editUserModal.style.display = 'none'; // Hide the modal
+        }
+
+        // Event listener for closing modal
+        closeModalButton.addEventListener('click', closeEditModal);
+        window.addEventListener('click', (event) => {
+            if (event.target == editUserModal) {
+                closeEditModal();
+            }
+        });
+
+
+        // Handle Edit User Form Submission
+        editUserForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const id = document.getElementById('editUserId').value;
+            const username = document.getElementById('editUsername').value;
+            const email = document.getElementById('editEmail').value;
+            const password = document.getElementById('editPassword').value;
+
+            modalStatusMessageDiv.textContent = 'Saving changes...';
+            modalStatusMessageDiv.className = 'message';
+
+            const requestBody = {
+                username: username,
+                email: email,
+                // Only include password if it's not empty, so backend doesn't try to hash an empty string
+                // or if you always want to update it (which is less common for password changes)
+            };
+            if (password) { // Only send password if user typed something
+                requestBody.password = password;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (response.ok) {
+                    modalStatusMessageDiv.textContent = 'User updated successfully!';
+                    modalStatusMessageDiv.classList.add('success-message');
+                    await fetchAndDisplayUsers(); // Re-fetch and display updated list
+                    setTimeout(closeEditModal, 1500); // Close modal after a short delay
+                } else {
+                    const errorText = await response.text();
+                    modalStatusMessageDiv.textContent = 'Update failed: ' + errorText;
+                    modalStatusMessageDiv.classList.add('error-message');
+                }
+            } catch (error) {
+                modalStatusMessageDiv.textContent = 'An error occurred during update: ' + error.message;
+                modalStatusMessageDiv.classList.add('error-message');
+            }
+        });
+
+        // Function to delete a user
+        async function deleteUser(userId, username) {
+            if (!confirm(`Are you sure you want to delete user "${username}" (ID: ${userId})?`)) {
+                return; // User cancelled the deletion
+            }
+
+            usersStatusMessageDiv.textContent = `Deleting user ${username}...`;
+            usersStatusMessageDiv.className = 'message'; // Reset class
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    usersStatusMessageDiv.textContent = `User "${username}" deleted successfully!`;
+                    usersStatusMessageDiv.classList.add('success-message');
+                    fetchAndDisplayUsers(); // Re-fetch and display updated list
+                } else {
+                    const errorText = await response.text();
+                    usersStatusMessageDiv.textContent = 'Delete failed: ' + errorText;
+                    usersStatusMessageDiv.classList.add('error-message');
+                }
+            } catch (error) {
+                usersStatusMessageDiv.textContent = 'An error occurred during deletion: ' + error.message;
+                usersStatusMessageDiv.classList.add('error-message');
+            }
+        }
+
+        // Initial fetch when the page loads
+        document.addEventListener('DOMContentLoaded', fetchAndDisplayUsers);
+    </script>
 </body>
 </html>
