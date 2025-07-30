@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Update & Delete User</title>
+    <link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+<div class="container">
+    <h2>Update User</h2>
+    <form action="/update" method="post">
+        <input type="number" name="id" placeholder="User ID" required>
+        <input type="text" name="field" placeholder="Field (e.g. email)" required>
+        <input type="text" name="value" placeholder="New Value" required>
+        <button type="submit">Update</button>
+    </form>
+
+    <h2>Delete User</h2>
+    <form action="/delete" method="post">
+        <input type="number" name="id" placeholder="User ID to Delete" required>
+        <button type="submit" class="delete">Delete</button>
+    </form>
+</div>
+</body>
+</html>
